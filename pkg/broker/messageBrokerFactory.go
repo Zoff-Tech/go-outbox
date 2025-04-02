@@ -4,37 +4,19 @@ import (
 	"context"
 	"fmt"
 
-	"cloud.google.com/go/pubsub"
-	"github.com/streadway/amqp"
 	"github.com/zoff-tech/go-outbox/pkg/config"
 )
 
 func NewBroker(ctx context.Context, cfg config.BrokerSettings) (MessageBroker, error) {
 	switch cfg.Type {
 	case "rabbitmq":
-		conn, err := amqp.Dial(cfg.URL)
+		conn, err := DefaultRabbitMQConnection(cfg.URL)
 		if err != nil {
 			return nil, err
 		}
-		ch, err := conn.Channel()
-		if err != nil {
-			return nil, err
-		}
-		err = ch.ExchangeDeclare(
-			cfg.Exchange, // name
-			"topic",      // type
-			true,         // durable
-			false,        // auto-deleted
-			false,        // internal
-			false,        // no-wait
-			nil,          // arguments
-		)
-		if err != nil {
-			return nil, err
-		}
-		return &rabbitMqBroker{channel: ch, exchange: cfg.Exchange}, nil
-	case "gcp-pubsub":
-		client, err := pubsub.NewClient(ctx, cfg.ProjectID)
+		return &rabbitMqBroker{connection: conn, exchange: cfg.Exchange}, nil
+	case "pubsub":
+		client, err := DefaultPubSubClient(ctx, cfg.ProjectID)
 		if err != nil {
 			return nil, err
 		}

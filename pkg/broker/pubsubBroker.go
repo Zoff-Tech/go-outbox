@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"cloud.google.com/go/pubsub"
+	"google.golang.org/api/option"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -11,6 +12,12 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"go.opentelemetry.io/otel/trace"
 )
+
+// PubSubClientCreator defines a function type for creating Pub/Sub clients.
+type PubSubClientCreator func(ctx context.Context, projectID string, opts ...option.ClientOption) (*pubsub.Client, error)
+
+// DefaultPubSubClient is the default implementation of PubSubClientCreator.
+var DefaultPubSubClient PubSubClientCreator = pubsub.NewClient
 
 type pubSubBroker struct {
 	client *pubsub.Client

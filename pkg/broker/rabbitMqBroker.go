@@ -11,9 +11,15 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// RabbitMQConnectionCreator defines a function type for creating RabbitMQ connections.
+type RabbitMQConnectionCreator func(url string) (*amqp.Connection, error)
+
+// DefaultRabbitMQConnection is the default implementation of RabbitMQConnectionCreator.
+var DefaultRabbitMQConnection RabbitMQConnectionCreator = amqp.Dial
+
 type rabbitMqBroker struct {
-	channel  *amqp.Channel
-	exchange string
+	connection *amqp.Connection
+	exchange   string
 }
 
 func (r *rabbitMqBroker) Publish(ctx context.Context, routingKey string, data []byte, headers map[string]string) error {
@@ -44,7 +50,14 @@ func (r *rabbitMqBroker) Publish(ctx context.Context, routingKey string, data []
 		amqpHeaders[k] = v
 	}
 
-	err := r.channel.Publish(
+	channel, err := r.connection.Channel()
+	defer channel.Close()
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	err = channel.Publish(
 		r.exchange, routingKey, false, false,
 		amqp.Publishing{
 			ContentType: "application/json",
@@ -65,5 +78,5 @@ func (r *rabbitMqBroker) Publish(ctx context.Context, routingKey string, data []
 }
 
 func (r *rabbitMqBroker) Close() error {
-	return r.channel.Close()
+	return r.connection.Close()
 }
