@@ -1,0 +1,15 @@
+database:
+  type: postgres
+  dsn: postgres://user:password@localhost:5432/dbname
+broker:
+  type: rabbitmq
+  url: amqp://guest:guest@localhost:5672/
+poll_interval: 10s
+batch_size: 100
+max_retries: 5
+retry_backoff: 2s
+dead_letter_topic: dead-letter-topic
+observability:
+  service_name: test-service
+  tracing_url: http://localhost:4318
+  metrics_url: http://localhost:9090
