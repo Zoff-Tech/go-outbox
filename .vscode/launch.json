@@ -9,7 +9,17 @@
         "type": "go",
         "request": "launch",
         "mode": "auto",
-        "program": "${workspaceFolder}"
+        "program": "${workspaceFolder}",
+        "env": {
+            "SIDECAR_DATABASE_TYPE": "postgres",
+            "SIDECAR_DATABASE_DSN": "host=localhost user=user password=pass dbname=appdb sslmode=disable",
+            "SIDECAR_BROKER_TYPE": "rabbitmq",
+            "SIDECAR_BROKER_URL": "amqp://guest:guest@localhost:5672/",
+            "SIDECAR_POLL_INTERVAL": "5s",
+            "JAEGER_AGENT_HOST": "jaeger",
+            "JAEGER_AGENT_PORT": "6831",
+            "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4318"
+        }
     },
         {
             "name": "Launch Package",

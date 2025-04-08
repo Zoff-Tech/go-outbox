@@ -1,7 +1,9 @@
 package config
 
 import (
+	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -26,6 +28,9 @@ func (c *Settings) Validate() error {
 }
 
 func LoadFromFile(filePath string) (*Settings, error) {
+
+	env := getEnvWithDefaultLookup("ENVIRONMENT", "development")
+
 	cfg := &Settings{}
 	viper.SetConfigType("yaml") // Set the config type to YAML
 	viper.SetConfigName("sidecar")
@@ -35,6 +40,15 @@ func LoadFromFile(filePath string) (*Settings, error) {
 	if err := viper.ReadInConfig(); err != nil {
 		log.Printf("No config file found or read error: %v (will rely on env)", err)
 	}
+
+	err := mergeConfig(filePath, "sidecar."+env)
+	if err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			fmt.Printf("Error merging dev config: %s\n", err)
+			os.Exit(1)
+		}
+	}
+
 	if err := viper.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
@@ -75,4 +89,21 @@ func (c *Settings) LoadFromEnv() error {
 		return err
 	}
 	return nil
+}
+
+func mergeConfig(path string, name string) error {
+	viper.SetConfigName(name)
+	viper.AddConfigPath(path)
+	err := viper.MergeInConfig()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func getEnvWithDefaultLookup(key, defaultValue string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return defaultValue
 }
