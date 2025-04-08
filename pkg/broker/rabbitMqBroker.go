@@ -3,6 +3,8 @@ package broker
 import (
 	"context"
 
+	"maps"
+
 	"github.com/streadway/amqp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -40,9 +42,7 @@ func (r *rabbitMqBroker) Publish(ctx context.Context, routingKey string, data []
 	propagator.Inject(ctx, propagation.MapCarrier(traceHeaders))
 
 	// Merge traceHeaders into headers
-	for k, v := range traceHeaders {
-		headers[k] = v
-	}
+	maps.Copy(headers, traceHeaders)
 
 	// Convert headers to amqp.Table
 	amqpHeaders := make(amqp.Table)
