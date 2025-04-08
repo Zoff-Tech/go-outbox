@@ -15,7 +15,7 @@ type PostgresRepository struct {
 func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([]OutboxEvent, error) {
 	return p.withTransaction(ctx, "FetchPending", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
 		rows, err := tx.QueryContext(ctx,
-			`SELECT id, topic, payload, retry_count FROM outbox 
+			`SELECT id, topic, payload, retry_count FROM outbox_events
              WHERE (status='pending' OR (status='processing' AND updated_at < $1)) 
              FOR UPDATE SKIP LOCKED LIMIT $2`, time.Now().Add(-lockExpiration), batchSize)
 		if err != nil {
@@ -66,7 +66,7 @@ func (p *PostgresRepository) MarkProcessed(ctx context.Context, eventID string) 
 func (p *PostgresRepository) SetStatus(ctx context.Context, eventID string, status Status) error {
 	_, err := p.withTransaction(ctx, "SetStatus", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
 		_, err := tx.ExecContext(ctx,
-			`UPDATE outbox SET status=$1, updated_at=$2 WHERE id=$3`,
+			`UPDATE outbox_events SET status=$1, updated_at=$2 WHERE id=$3`,
 			status, time.Now(), eventID)
 		if err != nil {
 			return nil, err
@@ -79,7 +79,7 @@ func (p *PostgresRepository) SetStatus(ctx context.Context, eventID string, stat
 func (p *PostgresRepository) SetStatusAndIncrementRetry(ctx context.Context, eventID string, status Status) error {
 	_, err := p.withTransaction(ctx, "SetStatusAndIncrementRetry", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
 		_, err := tx.ExecContext(ctx,
-			`UPDATE outbox SET status=$1, retry_count = retry_count + 1, updated_at=$2 WHERE id=$3`,
+			`UPDATE outbox_events SET status=$1, retry_count = retry_count + 1, updated_at=$2 WHERE id=$3`,
 			status, time.Now(), eventID)
 		if err != nil {
 			return nil, err
@@ -92,7 +92,7 @@ func (p *PostgresRepository) SetStatusAndIncrementRetry(ctx context.Context, eve
 func (p *PostgresRepository) IncrementRetryCount(ctx context.Context, eventID string) error {
 	_, err := p.withTransaction(ctx, "IncrementRetryCount", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
 		_, err := tx.ExecContext(ctx,
-			`UPDATE outbox SET retry_count = retry_count + 1, updated_at=$1 WHERE id=$2`,
+			`UPDATE outbox_events SET retry_count = retry_count + 1, updated_at=$1 WHERE id=$2`,
 			time.Now(), eventID)
 		if err != nil {
 			return nil, err

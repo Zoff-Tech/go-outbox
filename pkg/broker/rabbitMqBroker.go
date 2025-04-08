@@ -51,11 +51,11 @@ func (r *rabbitMqBroker) Publish(ctx context.Context, routingKey string, data []
 	}
 
 	channel, err := r.connection.Channel()
-	defer channel.Close()
 	if err != nil {
 		span.RecordError(err)
 		return err
 	}
+	defer channel.Close()
 
 	err = channel.Publish(
 		r.exchange, routingKey, false, false,

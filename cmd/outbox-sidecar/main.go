@@ -15,7 +15,7 @@ func main() {
 	ctx := context.Background()
 
 	// Load configuration from file or environment
-	cfg, err := config.LoadFromFile(".")
+	cfg, err := config.LoadFromFile("./cmd/outbox-sidecar")
 	if err != nil {
 		log.Fatal("Error loading configuration: ", err)
 	}
