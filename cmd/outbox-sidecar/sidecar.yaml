@@ -4,6 +4,8 @@ database:
 broker:
   type: rabbitmq
   url: amqp://guest:guest@rabbitmq:5672/
+  exchange: outbox
+  pool_size: 10
 poll_interval: 10s
 batch_size: 100
 max_retries: 5

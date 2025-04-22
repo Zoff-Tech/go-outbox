@@ -4,6 +4,6 @@ package config
 type BrokerSettings struct {
 	Type      string
 	URL       string
-	Exchange  string
 	ProjectID string // Optional for brokers like GCP Pub/Sub
+	PoolSize  int    // Optional for RabbitMQ
 }

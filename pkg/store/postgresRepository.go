@@ -15,7 +15,7 @@ type PostgresRepository struct {
 func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([]OutboxEvent, error) {
 	return p.withTransaction(ctx, "FetchPending", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
 		rows, err := tx.QueryContext(ctx,
-			`SELECT id, topic, payload, retry_count FROM outbox_events
+			`SELECT id, entity, entity_type, payload, retry_count, event_headers, routing_key FROM outbox_events
              WHERE (status='pending' OR (status='processing' AND updated_at < $1)) 
              FOR UPDATE SKIP LOCKED LIMIT $2`, time.Now().Add(-lockExpiration), batchSize)
 		if err != nil {
@@ -26,7 +26,13 @@ func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([
 		var events []OutboxEvent
 		for rows.Next() {
 			var event OutboxEvent
-			if err := rows.Scan(&event.ID, &event.Topic, &event.Payload, &event.RetryCount); err != nil {
+			if err := rows.Scan(&event.ID,
+				&event.Entity,
+				&event.EntityType,
+				&event.Payload,
+				&event.RetryCount,
+				&event.Headers,
+				&event.RoutingKey); err != nil {
 				return nil, err
 			}
 			events = append(events, event)

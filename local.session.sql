@@ -10,7 +10,7 @@ INSERT INTO outbox_events (
     retry_count
 )
 VALUES (
-    '123e4567-e89b-12d3-a456-426614174000', -- Example UUID for id
+    '123e4567-e89b-12d3-a456-426614174007', -- Example UUID for id
     'example-topic',                       -- Example topic
     '\x48656c6c6f20576f726c64',            -- Example payload in hexadecimal (Hello World)
     'pending',                             -- Example status

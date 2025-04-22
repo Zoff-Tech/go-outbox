@@ -47,20 +47,21 @@ func (p *OutboxProcessor) ProcessEvents(ctx context.Context) {
 		for _, event := range events {
 			ctx, span := p.tracer.Start(ctx, "ProcessOutboxEvent", trace.WithAttributes(
 				attribute.String("event.id", event.ID),
-				attribute.String("event.topic", event.Topic),
+				attribute.String("event.destination", event.Entity),
+				attribute.String("event.type", event.EntityType),
 				attribute.String("event.status", string(event.Status)),
 				attribute.Int("event.retry_count", event.RetryCount),
 				attribute.String("event.created_at", event.CreatedAt.String()),
 				attribute.String("event.updated_at", event.UpdatedAt.String()),
 			))
 
-			headers := event.EventHeaders
+			headers := event.Headers
 
 			// Inject the trace context into the message headers
 			propagator := otel.GetTextMapPropagator()
 			propagator.Inject(ctx, propagation.MapCarrier(headers))
 
-			if err := p.broker.Publish(ctx, event.Topic, event.Payload, headers); err != nil {
+			if err := p.broker.Publish(ctx, &event); err != nil {
 				log.Printf("Failed to publish event %s: %v", event.ID, err)
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())

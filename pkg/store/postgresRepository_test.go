@@ -37,11 +37,11 @@ func TestFetchPending(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, events, 2)
 	assert.Equal(t, "1", events[0].ID)
-	assert.Equal(t, "topic1", events[0].Topic)
+	assert.Equal(t, "topic1", events[0].Entity)
 	assert.Equal(t, []byte("payload1"), events[0].Payload)
 	assert.Equal(t, 0, events[0].RetryCount)
 	assert.Equal(t, "2", events[1].ID)
-	assert.Equal(t, "topic2", events[1].Topic)
+	assert.Equal(t, "topic2", events[1].Entity)
 	assert.Equal(t, []byte("payload2"), events[1].Payload)
 	assert.Equal(t, 2, events[1].RetryCount)
 

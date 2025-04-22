@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"cloud.google.com/go/pubsub"
+	"github.com/zoff-tech/go-outbox/pkg/config"
+	"github.com/zoff-tech/go-outbox/pkg/store"
 	"google.golang.org/api/option"
 
 	"go.opentelemetry.io/otel"
@@ -13,23 +15,29 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// PubSubClientCreator defines a function type for creating Pub/Sub clients.
-type PubSubClientCreator func(ctx context.Context, projectID string, opts ...option.ClientOption) (*pubsub.Client, error)
+// PubSubBrokerCreator defines a function type for creating Pub/Sub clients.
+type PubSubBrokerCreator func(ctx context.Context, settings *config.BrokerSettings, opts ...option.ClientOption) (MessageBroker, error)
 
-// DefaultPubSubClient is the default implementation of PubSubClientCreator.
-var DefaultPubSubClient PubSubClientCreator = pubsub.NewClient
+// NewPubSubClient is the default implementation of PubSubClientCreator.
+var NewPubSubClient PubSubBrokerCreator = func(ctx context.Context, settings *config.BrokerSettings, opts ...option.ClientOption) (MessageBroker, error) {
+	client, err := pubsub.NewClient(ctx, settings.ProjectID, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &pubSubBroker{client: client}, nil
+}
 
 type pubSubBroker struct {
 	client *pubsub.Client
 }
 
-func (p *pubSubBroker) Publish(ctx context.Context, topic string, data []byte, headers map[string]string) error {
+func (p *pubSubBroker) Publish(ctx context.Context, event *store.OutboxEvent) error {
 	tracer := otel.Tracer("go-outbox")
 	ctx, span := tracer.Start(ctx, "Publish",
 		trace.WithAttributes(
 			semconv.MessagingSystemKey.String("pubsub"),
 			semconv.MessagingDestinationKindKey.String("topic"),
-			semconv.MessagingDestinationKey.String(topic),
+			semconv.MessagingDestinationKey.String(event.Entity),
 		),
 	)
 	defer span.End()
@@ -40,16 +48,16 @@ func (p *pubSubBroker) Publish(ctx context.Context, topic string, data []byte, h
 	propagator.Inject(ctx, propagation.MapCarrier(attributes))
 
 	// Merge headers into attributes
-	for key, value := range headers {
+	for key, value := range event.Headers {
 		attributes[key] = value
 	}
 
 	message := &pubsub.Message{
-		Data:       data,
+		Data:       event.Payload,
 		Attributes: attributes,
 	}
 
-	res := p.client.Topic(topic).Publish(ctx, message)
+	res := p.client.Topic(event.Entity).Publish(ctx, message)
 	_, err := res.Get(ctx) // wait for server ack
 	if err != nil {
 		span.RecordError(err)
@@ -57,7 +65,7 @@ func (p *pubSubBroker) Publish(ctx context.Context, topic string, data []byte, h
 	}
 
 	span.SetAttributes(
-		attribute.Int("messaging.message_payload_size_bytes", len(data)),
+		attribute.Int("messaging.message_payload_size_bytes", len(event.Payload)),
 	)
 
 	return nil

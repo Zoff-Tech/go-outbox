@@ -2,97 +2,125 @@ package broker
 
 import (
 	"context"
+	"errors"
 	"testing"
 
-	"cloud.google.com/go/pubsub"
-	"github.com/streadway/amqp"
 	"github.com/stretchr/testify/assert"
 	"github.com/zoff-tech/go-outbox/pkg/config"
+	"github.com/zoff-tech/go-outbox/pkg/store"
 	"google.golang.org/api/option"
 )
 
-func TestNewBroker_RabbitMQ(t *testing.T) {
-	t.Run("should create a RabbitMQ broker successfully", func(t *testing.T) {
-		// Arrange
-		mockURL := "amqp://guest:guest@localhost:5672/"
-		mockExchange := "test-exchange"
-		cfg := config.BrokerSettings{
-			Type:     "rabbitmq",
-			URL:      mockURL,
-			Exchange: mockExchange,
-		}
-		ctx := context.Background()
+// Mock implementations for RabbitMQ and PubSub brokers
+type mockRabbitMqBroker struct{}
 
-		// Mock DefaultRabbitMQConnection to avoid real RabbitMQ calls
-		originalConnection := DefaultRabbitMQConnection
-		DefaultRabbitMQConnection = func(url string) (*amqp.Connection, error) {
-			assert.Equal(t, mockURL, url)
-			return &amqp.Connection{}, nil
-		}
-		defer func() { DefaultRabbitMQConnection = originalConnection }()
-
-		// Act
-		broker, err := NewBroker(ctx, cfg)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, broker)
-		assert.IsType(t, &rabbitMqBroker{}, broker)
-
-		// Additional validation
-		rabbitBroker, ok := broker.(*rabbitMqBroker)
-		assert.True(t, ok)
-		assert.Equal(t, mockExchange, rabbitBroker.exchange)
-	})
+func (m *mockRabbitMqBroker) Publish(ctx context.Context, message *store.OutboxEvent) error {
+	return nil
 }
 
-func TestNewBroker_GCPPubSub(t *testing.T) {
-	t.Run("should create a GCP Pub/Sub broker successfully", func(t *testing.T) {
-		// Arrange
-		mockProjectID := "test-project"
-		cfg := config.BrokerSettings{
-			Type:      "pubsub",
-			ProjectID: mockProjectID,
-		}
-		ctx := context.Background()
-
-		// Mock DefaultPubSubClient to avoid real GCP calls
-		originalClient := DefaultPubSubClient
-		DefaultPubSubClient = func(ctx context.Context, projectID string, opts ...option.ClientOption) (*pubsub.Client, error) {
-			assert.Equal(t, mockProjectID, projectID)
-			return &pubsub.Client{}, nil
-		}
-		defer func() { DefaultPubSubClient = originalClient }()
-
-		// Act
-		broker, err := NewBroker(ctx, cfg)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, broker)
-		assert.IsType(t, &pubSubBroker{}, broker)
-
-		// Additional validation
-		pubSubBroker, ok := broker.(*pubSubBroker)
-		assert.True(t, ok)
-		assert.NotNil(t, pubSubBroker.client)
-	})
+func (m *mockRabbitMqBroker) Close() error {
+	return nil
 }
 
-func TestNewBroker_Unsupported(t *testing.T) {
-	t.Run("should return an error for unsupported broker type", func(t *testing.T) {
-		// Arrange
-		cfg := config.BrokerSettings{
-			Type: "unsupported",
-		}
-		ctx := context.Background()
+type mockPubSubBroker struct{}
 
-		// Act
-		broker, err := NewBroker(ctx, cfg)
+func (m *mockPubSubBroker) Publish(ctx context.Context, message *store.OutboxEvent) error {
+	return nil
+}
 
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, broker)
-		assert.Equal(t, "unsupported broker type: unsupported", err.Error())
-	})
+func (m *mockPubSubBroker) Close() error {
+	return nil
+}
+
+// Factory functions
+func NewMockRabbitMqBroker(ctx context.Context, cfg *config.BrokerSettings) (MessageBroker, error) {
+	if cfg.Type == "error" {
+		return nil, errors.New("failed to create RabbitMQ broker")
+	}
+	return &mockRabbitMqBroker{}, nil
+}
+
+func NewMockPubSubClient(ctx context.Context, cfg *config.BrokerSettings, opts ...option.ClientOption) (MessageBroker, error) {
+	if cfg.Type == "error" {
+		return nil, errors.New("failed to create PubSub broker")
+	}
+	return &mockPubSubBroker{}, nil
+}
+
+// Tests
+func TestNewBroker(t *testing.T) {
+	// Save the original implementations
+	originalNewRabbitMqBroker := NewRabbitMqBroker
+	originalNewPubSubClient := NewPubSubClient
+
+	// Replace the actual implementations with mocks for testing
+	NewRabbitMqBroker = NewMockRabbitMqBroker
+	NewPubSubClient = NewMockPubSubClient
+
+	// Restore the original implementations after the test
+	defer func() {
+		NewRabbitMqBroker = originalNewRabbitMqBroker
+		NewPubSubClient = originalNewPubSubClient
+	}()
+
+	tests := []struct {
+		name        string
+		cfg         *config.BrokerSettings
+		expectedErr string
+	}{
+		{
+			name: "Valid RabbitMQ configuration",
+			cfg: &config.BrokerSettings{
+				Type:     "rabbitmq",
+				URL:      "amqp://guest:guest@localhost:5672/",
+				PoolSize: 5,
+			},
+			expectedErr: "",
+		},
+		{
+			name: "Invalid RabbitMQ configuration",
+			cfg: &config.BrokerSettings{
+				Type:     "rabbitmq",
+				URL:      "invalid-url",
+				PoolSize: 5,
+			},
+			expectedErr: "failed to connect to RabbitMQ",
+		},
+		{
+			name: "Valid Pub/Sub configuration",
+			cfg: &config.BrokerSettings{
+				Type:      "pubsub",
+				ProjectID: "valid-project",
+			},
+			expectedErr: "",
+		},
+		{
+			name: "Invalid Pub/Sub configuration",
+			cfg: &config.BrokerSettings{
+				Type:      "pubsub",
+				ProjectID: "invalid-project",
+			},
+			expectedErr: "failed to connect to Pub/Sub",
+		},
+		{
+			name: "Unsupported broker type",
+			cfg: &config.BrokerSettings{
+				Type: "unsupported",
+			},
+			expectedErr: "unsupported broker type: unsupported",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			broker, err := NewBroker(context.Background(), tt.cfg)
+			if tt.expectedErr != "" {
+				assert.Nil(t, broker)
+				assert.EqualError(t, err, tt.expectedErr)
+			} else {
+				assert.NotNil(t, broker)
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
