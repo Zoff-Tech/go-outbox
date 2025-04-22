@@ -57,6 +57,8 @@ func (p *pubSubBroker) Publish(ctx context.Context, event *store.OutboxEvent) er
 		Attributes: attributes,
 	}
 
+	message.OrderingKey = event.RoutingKey
+
 	res := p.client.Topic(event.Entity).Publish(ctx, message)
 	_, err := res.Get(ctx) // wait for server ack
 	if err != nil {
