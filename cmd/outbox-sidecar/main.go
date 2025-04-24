@@ -40,7 +40,7 @@ func main() {
 	}
 
 	// Initialize the message broker
-	broker, err := broker.NewBroker(ctx, cfg.Broker)
+	broker, err := broker.NewBroker(ctx, &cfg.Broker)
 	if err != nil {
 		log.Fatal("Failed to initialize broker: ", err)
 	}

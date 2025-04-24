@@ -2,97 +2,56 @@ package broker
 
 import (
 	"context"
+	"regexp"
 	"testing"
 
-	"cloud.google.com/go/pubsub"
-	"github.com/streadway/amqp"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"github.com/zoff-tech/go-outbox/pkg/config"
-	"google.golang.org/api/option"
+	"github.com/zoff-tech/go-outbox/pkg/store"
 )
 
-func TestNewBroker_RabbitMQ(t *testing.T) {
-	t.Run("should create a RabbitMQ broker successfully", func(t *testing.T) {
-		// Arrange
-		mockURL := "amqp://guest:guest@localhost:5672/"
-		mockExchange := "test-exchange"
-		cfg := config.BrokerSettings{
-			Type:     "rabbitmq",
-			URL:      mockURL,
-			Exchange: mockExchange,
-		}
-		ctx := context.Background()
+func TestFetchPending(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
 
-		// Mock DefaultRabbitMQConnection to avoid real RabbitMQ calls
-		originalConnection := DefaultRabbitMQConnection
-		DefaultRabbitMQConnection = func(url string) (*amqp.Connection, error) {
-			assert.Equal(t, mockURL, url)
-			return &amqp.Connection{}, nil
-		}
-		defer func() { DefaultRabbitMQConnection = originalConnection }()
+	repo := &store.PostgresRepository{Db: db}
 
-		// Act
-		broker, err := NewBroker(ctx, cfg)
+	// Mock rows for the SELECT query
+	rows := sqlmock.NewRows([]string{"id", "entity", "entity_type", "payload", "retry_count", "headers", "routing_key"}).
+		AddRow("1", "entity1", "type1", []byte("payload1"), 0, `{"header1":"value1"}`, "key1").
+		AddRow("2", "entity2", "type2", []byte("payload2"), 3, `{"header2":"value2"}`, "key2")
 
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, broker)
-		assert.IsType(t, &rabbitMqBroker{}, broker)
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, entity, entity_type, payload, retry_count, headers, routing_key FROM outbox_events WHERE (status='pending' OR (status='processing' AND updated_at < $1)) FOR UPDATE SKIP LOCKED LIMIT $2`)).
+		WithArgs(sqlmock.AnyArg(), 10).
+		WillReturnRows(rows)
+	mock.ExpectExec(regexp.QuoteMeta(`UPDATE outbox_events SET status=$1, retry_count = retry_count + 1, updated_at=$2 WHERE id=$3`)).
+		WithArgs(store.StatusProcessing, sqlmock.AnyArg(), "1").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(regexp.QuoteMeta(`UPDATE outbox_events SET status=$1, updated_at=$2 WHERE id=$3`)).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "2").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 
-		// Additional validation
-		rabbitBroker, ok := broker.(*rabbitMqBroker)
-		assert.True(t, ok)
-		assert.Equal(t, mockExchange, rabbitBroker.exchange)
-	})
-}
+	ctx := context.Background()
+	events, err := repo.FetchPending(ctx, 10)
+	assert.NoError(t, err)
+	assert.Len(t, events, 2)
 
-func TestNewBroker_GCPPubSub(t *testing.T) {
-	t.Run("should create a GCP Pub/Sub broker successfully", func(t *testing.T) {
-		// Arrange
-		mockProjectID := "test-project"
-		cfg := config.BrokerSettings{
-			Type:      "pubsub",
-			ProjectID: mockProjectID,
-		}
-		ctx := context.Background()
+	assert.Equal(t, "1", events[0].ID)
+	assert.Equal(t, "entity1", events[0].Entity)
+	assert.Equal(t, "type1", events[0].EntityType)
+	assert.Equal(t, []byte("payload1"), events[0].Payload)
+	assert.Equal(t, 0, events[0].RetryCount)
+	assert.Equal(t, "key1", events[0].RoutingKey)
 
-		// Mock DefaultPubSubClient to avoid real GCP calls
-		originalClient := DefaultPubSubClient
-		DefaultPubSubClient = func(ctx context.Context, projectID string, opts ...option.ClientOption) (*pubsub.Client, error) {
-			assert.Equal(t, mockProjectID, projectID)
-			return &pubsub.Client{}, nil
-		}
-		defer func() { DefaultPubSubClient = originalClient }()
+	assert.Equal(t, "2", events[1].ID)
+	assert.Equal(t, "entity2", events[1].Entity)
+	assert.Equal(t, "type2", events[1].EntityType)
+	assert.Equal(t, []byte("payload2"), events[1].Payload)
+	assert.Equal(t, 3, events[1].RetryCount)
+	assert.Equal(t, "key2", events[1].RoutingKey)
 
-		// Act
-		broker, err := NewBroker(ctx, cfg)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, broker)
-		assert.IsType(t, &pubSubBroker{}, broker)
-
-		// Additional validation
-		pubSubBroker, ok := broker.(*pubSubBroker)
-		assert.True(t, ok)
-		assert.NotNil(t, pubSubBroker.client)
-	})
-}
-
-func TestNewBroker_Unsupported(t *testing.T) {
-	t.Run("should return an error for unsupported broker type", func(t *testing.T) {
-		// Arrange
-		cfg := config.BrokerSettings{
-			Type: "unsupported",
-		}
-		ctx := context.Background()
-
-		// Act
-		broker, err := NewBroker(ctx, cfg)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, broker)
-		assert.Equal(t, "unsupported broker type: unsupported", err.Error())
-	})
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

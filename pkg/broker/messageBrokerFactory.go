@@ -7,20 +7,21 @@ import (
 	"github.com/zoff-tech/go-outbox/pkg/config"
 )
 
-func NewBroker(ctx context.Context, cfg config.BrokerSettings) (MessageBroker, error) {
+func NewBroker(ctx context.Context, cfg *config.BrokerSettings) (MessageBroker, error) {
 	switch cfg.Type {
 	case "rabbitmq":
-		conn, err := DefaultRabbitMQConnection(cfg.URL)
+		// Use NewRabbitMqBroker to create the RabbitMQ broker
+		broker, err := NewRabbitMqBroker(ctx, cfg)
 		if err != nil {
 			return nil, err
 		}
-		return &rabbitMqBroker{connection: conn, exchange: cfg.Exchange}, nil
+		return broker, nil
 	case "pubsub":
-		client, err := DefaultPubSubClient(ctx, cfg.ProjectID)
+		broker, err := NewPubSubClient(ctx, cfg)
 		if err != nil {
 			return nil, err
 		}
-		return &pubSubBroker{client: client}, nil
+		return broker, nil
 	default:
 		return nil, fmt.Errorf("unsupported broker type: %s", cfg.Type)
 	}

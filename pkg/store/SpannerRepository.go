@@ -14,7 +14,7 @@ type SpannerRepository struct {
 
 func (s *SpannerRepository) FetchPending(ctx context.Context, batchSize int) ([]OutboxEvent, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT id, topic, payload, retry_count FROM outbox
+		SQL: `SELECT id, entity, entity_type, payload, retry_count, headers, routing_key FROM outbox
               WHERE (status = @statusPending OR (status = @statusProcessing AND updated_at < @lockExpiration))
               LIMIT @batchSize`,
 		Params: map[string]interface{}{
@@ -39,7 +39,14 @@ func (s *SpannerRepository) FetchPending(ctx context.Context, batchSize int) ([]
 		}
 
 		var event OutboxEvent
-		if err := row.Columns(&event.ID, &event.Topic, &event.Payload, &event.RetryCount); err != nil {
+		if err := row.Columns(
+			&event.ID,
+			&event.Entity,
+			&event.EntityType,
+			&event.Payload,
+			&event.RetryCount,
+			&event.Headers,
+			&event.RoutingKey); err != nil {
 			return nil, err
 		}
 		events = append(events, event)

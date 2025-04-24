@@ -1,0 +1,2 @@
+"UPDATE outbox_events SET status=$1, retry_count = retry_count + 1, updated_at=$2 WHERE id=$3"
+"UPDATE outbox_events SET status=$1, retry_count = retry_count + 1, updated_at=$2 WHERE id=$3"
