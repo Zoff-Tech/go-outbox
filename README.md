@@ -73,10 +73,9 @@ This co-location minimizes communication latency and allows the sidecar to relia
 
 ## Configuration Management
 
-The sidecar service is highly configurable, with support for `YAML` configuration files and environment variables. 
----
+The sidecar service configurable, with support for `YAML` configuration files and `environment` variables. 
 
-## Example: YAML Configuration for a Go Outbox Sidecar
+### Example: YAML Configuration for a Go Outbox Sidecar
 
 This YAML file (`sidecar.development.yaml`) provides a clear, human-readable way to configure your Go outbox sidecar service for a development environment. It demonstrates how you can manage all critical settings in one place, making your application easy to deploy and maintain.
 
