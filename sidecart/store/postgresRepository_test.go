@@ -6,6 +6,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/zoff-tech/go-outbox/schema"
 )
 
 func TestFetchPending(t *testing.T) {
@@ -65,7 +66,7 @@ func TestMarkProcessed(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`UPDATE outbox_events SET status=\$1, updated_at=\$2 WHERE id=\$3`).
-		WithArgs(StatusSent, sqlmock.AnyArg(), "1").
+		WithArgs(schema.StatusSent, sqlmock.AnyArg(), "1").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
@@ -85,12 +86,12 @@ func TestSetStatus(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`UPDATE outbox_events SET status=\$1, updated_at=\$2 WHERE id=\$3`).
-		WithArgs(StatusProcessing, sqlmock.AnyArg(), "1").
+		WithArgs(schema.StatusProcessing, sqlmock.AnyArg(), "1").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
 	ctx := context.Background()
-	err = repo.SetStatus(ctx, "1", StatusProcessing)
+	err = repo.SetStatus(ctx, "1", schema.StatusProcessing)
 	assert.NoError(t, err)
 
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -105,12 +106,12 @@ func TestSetStatusAndIncrementRetry(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`UPDATE outbox_events SET status=\$1, retry_count = retry_count \+ 1, updated_at=\$2 WHERE id=\$3`).
-		WithArgs(StatusProcessing, sqlmock.AnyArg(), "1").
+		WithArgs(schema.StatusProcessing, sqlmock.AnyArg(), "1").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
 	ctx := context.Background()
-	err = repo.SetStatusAndIncrementRetry(ctx, "1", StatusProcessing)
+	err = repo.SetStatusAndIncrementRetry(ctx, "1", schema.StatusProcessing)
 	assert.NoError(t, err)
 
 	assert.NoError(t, mock.ExpectationsWereMet())

@@ -1,1 +1,0 @@
-Update outbox_events set status = 'pending'

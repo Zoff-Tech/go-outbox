@@ -31,17 +31,6 @@ services:
       retries: 3
       start_period: 10s
 
-
-  # otel-collector:
-  #   image: otel/opentelemetry-collector:latest
-  #   container_name: otel-collector
-  #   ports:
-  #     - "4317:4317"       # OTLP gRPC receiver
-  #     - "4318:4318"       # OTLP HTTP receiver
-  #   volumes:
-  #     - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
-  #   command: ["--config=/etc/otel-collector-config.yaml"]
-
   jaeger:
     image: jaegertracing/all-in-one:latest
     container_name: jaeger
@@ -70,7 +59,7 @@ services:
 
   outbox-sidecar:
     build:
-      context: .
+      context: ./sidecart/
       dockerfile: ./Dockerfile
     container_name: outbox-sidecar
     depends_on:

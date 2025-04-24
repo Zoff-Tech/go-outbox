@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/zoff-tech/go-outbox/pkg/config"
+	"github.com/zoff-tech/go-outbox/config"
 	"go.opentelemetry.io/otel"
 )
 

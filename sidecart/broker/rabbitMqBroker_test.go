@@ -9,8 +9,8 @@ import (
 	"github.com/streadway/amqp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/zoff-tech/go-outbox/pkg/config"
-	"github.com/zoff-tech/go-outbox/pkg/store"
+	"github.com/zoff-tech/go-outbox/config"
+	"github.com/zoff-tech/go-outbox/store"
 )
 
 // --- Mocks ---

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/spanner"
-	"github.com/zoff-tech/go-outbox/pkg/config"
+	"github.com/zoff-tech/go-outbox/config"
 
 	_ "github.com/lib/pq" // PostgreSQL driver
 )

@@ -10,7 +10,7 @@ import (
 	"cloud.google.com/go/spanner/spannertest"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"github.com/zoff-tech/go-outbox/pkg/config"
+	"github.com/zoff-tech/go-outbox/config"
 )
 
 var sqlOpen = sql.Open

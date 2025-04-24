@@ -3,7 +3,7 @@ package broker
 import (
 	"context"
 
-	"github.com/zoff-tech/go-outbox/pkg/store"
+	"github.com/zoff-tech/go-outbox/store"
 )
 
 // MessageBroker defines the operations to publish messages to a broker.

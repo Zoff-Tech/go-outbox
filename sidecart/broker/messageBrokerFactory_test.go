@@ -7,7 +7,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"github.com/zoff-tech/go-outbox/pkg/store"
+	"github.com/zoff-tech/go-outbox/store"
 )
 
 func TestFetchPending(t *testing.T) {

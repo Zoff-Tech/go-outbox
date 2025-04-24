@@ -4,18 +4,18 @@ import (
 	"context"
 	"log"
 
-	"github.com/zoff-tech/go-outbox/pkg/broker"
-	"github.com/zoff-tech/go-outbox/pkg/config"
-	"github.com/zoff-tech/go-outbox/pkg/processor"
-	"github.com/zoff-tech/go-outbox/pkg/store"
-	"github.com/zoff-tech/go-outbox/pkg/telemetry"
+	"github.com/zoff-tech/go-outbox/broker"
+	"github.com/zoff-tech/go-outbox/config"
+	"github.com/zoff-tech/go-outbox/processor"
+	"github.com/zoff-tech/go-outbox/store"
+	"github.com/zoff-tech/go-outbox/telemetry"
 )
 
 func main() {
 	ctx := context.Background()
 
 	// Load configuration from file or environment
-	cfg, err := config.LoadFromFile("./cmd/outbox-sidecar")
+	cfg, err := config.LoadFromFile("./config")
 	if err != nil {
 		log.Fatal("Error loading configuration: ", err)
 	}

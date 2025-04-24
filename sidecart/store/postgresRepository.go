@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/zoff-tech/go-outbox/schema"
 	"go.opentelemetry.io/otel"
 )
 
@@ -14,8 +15,8 @@ type PostgresRepository struct {
 	Db *sql.DB // using database/sql
 }
 
-func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([]OutboxEvent, error) {
-	return p.withTransaction(ctx, "FetchPending", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
+func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([]schema.OutboxEvent, error) {
+	return p.withTransaction(ctx, "FetchPending", func(ctx context.Context, tx *sql.Tx) ([]schema.OutboxEvent, error) {
 		rows, err := tx.QueryContext(ctx,
 			`SELECT id, entity, entity_type, payload, retry_count, headers, routing_key FROM outbox_events
              WHERE (status='pending' OR (status='processing' AND updated_at < $1)) 
@@ -25,11 +26,11 @@ func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([
 		}
 		defer rows.Close()
 
-		var events []OutboxEvent
+		var events []schema.OutboxEvent
 		var rawHeaders string // Use a temporary variable to store the raw headers
 
 		for rows.Next() {
-			var event OutboxEvent
+			var event schema.OutboxEvent
 			if err := rows.Scan(&event.ID,
 				&event.Entity,
 				&event.EntityType,
@@ -57,11 +58,11 @@ func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([
 		// Update status and updated_at for fetched events
 		for _, event := range events {
 			if event.RetryCount >= maxRetries {
-				if err := p.SetStatus(ctx, event.ID, StatusFailed); err != nil {
+				if err := p.SetStatus(ctx, event.ID, schema.StatusFailed); err != nil {
 					return nil, err
 				}
 			} else {
-				if err := p.SetStatusAndIncrementRetry(ctx, event.ID, StatusProcessing); err != nil {
+				if err := p.SetStatusAndIncrementRetry(ctx, event.ID, schema.StatusProcessing); err != nil {
 					return nil, err
 				}
 			}
@@ -72,8 +73,8 @@ func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([
 }
 
 func (p *PostgresRepository) MarkProcessed(ctx context.Context, eventID string) error {
-	_, err := p.withTransaction(ctx, "MarkProcessed", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
-		if err := p.SetStatus(ctx, eventID, StatusSent); err != nil {
+	_, err := p.withTransaction(ctx, "MarkProcessed", func(ctx context.Context, tx *sql.Tx) ([]schema.OutboxEvent, error) {
+		if err := p.SetStatus(ctx, eventID, schema.StatusSent); err != nil {
 			return nil, err
 		}
 		return nil, nil
@@ -81,8 +82,8 @@ func (p *PostgresRepository) MarkProcessed(ctx context.Context, eventID string) 
 	return err
 }
 
-func (p *PostgresRepository) SetStatus(ctx context.Context, eventID string, status Status) error {
-	_, err := p.withTransaction(ctx, "SetStatus", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
+func (p *PostgresRepository) SetStatus(ctx context.Context, eventID string, status schema.Status) error {
+	_, err := p.withTransaction(ctx, "SetStatus", func(ctx context.Context, tx *sql.Tx) ([]schema.OutboxEvent, error) {
 		_, err := tx.ExecContext(ctx,
 			`UPDATE outbox_events SET status=$1, updated_at=$2 WHERE id=$3`,
 			status, time.Now(), eventID)
@@ -94,8 +95,8 @@ func (p *PostgresRepository) SetStatus(ctx context.Context, eventID string, stat
 	return err
 }
 
-func (p *PostgresRepository) SetStatusAndIncrementRetry(ctx context.Context, eventID string, status Status) error {
-	_, err := p.withTransaction(ctx, "SetStatusAndIncrementRetry", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
+func (p *PostgresRepository) SetStatusAndIncrementRetry(ctx context.Context, eventID string, status schema.Status) error {
+	_, err := p.withTransaction(ctx, "SetStatusAndIncrementRetry", func(ctx context.Context, tx *sql.Tx) ([]schema.OutboxEvent, error) {
 		_, err := tx.ExecContext(ctx,
 			`UPDATE outbox_events SET status=$1, retry_count = retry_count + 1, updated_at=$2 WHERE id=$3`,
 			status, time.Now(), eventID)
@@ -108,7 +109,7 @@ func (p *PostgresRepository) SetStatusAndIncrementRetry(ctx context.Context, eve
 }
 
 func (p *PostgresRepository) IncrementRetryCount(ctx context.Context, eventID string) error {
-	_, err := p.withTransaction(ctx, "IncrementRetryCount", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
+	_, err := p.withTransaction(ctx, "IncrementRetryCount", func(ctx context.Context, tx *sql.Tx) ([]schema.OutboxEvent, error) {
 		_, err := tx.ExecContext(ctx,
 			`UPDATE outbox_events SET retry_count = retry_count + 1, updated_at=$1 WHERE id=$2`,
 			time.Now(), eventID)
@@ -120,7 +121,7 @@ func (p *PostgresRepository) IncrementRetryCount(ctx context.Context, eventID st
 	return err
 }
 
-func (p *PostgresRepository) withTransaction(ctx context.Context, spanName string, fn func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error)) ([]OutboxEvent, error) {
+func (p *PostgresRepository) withTransaction(ctx context.Context, spanName string, fn func(ctx context.Context, tx *sql.Tx) ([]schema.OutboxEvent, error)) ([]schema.OutboxEvent, error) {
 	tracer := otel.Tracer("go-outbox")
 	ctx, span := tracer.Start(ctx, spanName)
 	defer span.End()

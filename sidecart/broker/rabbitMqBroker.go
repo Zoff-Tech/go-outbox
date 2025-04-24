@@ -17,8 +17,8 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/zoff-tech/go-outbox/pkg/config"
-	"github.com/zoff-tech/go-outbox/pkg/store"
+	"github.com/zoff-tech/go-outbox/config"
+	"github.com/zoff-tech/go-outbox/store"
 )
 
 type connectionInterface interface {

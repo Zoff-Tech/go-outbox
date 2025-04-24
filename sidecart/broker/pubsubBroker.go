@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/zoff-tech/go-outbox/pkg/config"
-	"github.com/zoff-tech/go-outbox/pkg/store"
+	"github.com/zoff-tech/go-outbox/config"
+	"github.com/zoff-tech/go-outbox/store"
 	"google.golang.org/api/option"
 
 	"go.opentelemetry.io/otel"
