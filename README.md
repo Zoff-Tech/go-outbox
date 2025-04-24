@@ -100,8 +100,6 @@ observability:
   metrics_url: otel-collector:9090
 
 ```
-
-
 ### **Key Sections and What They Do**
 
 #### **1. Database Configuration**
