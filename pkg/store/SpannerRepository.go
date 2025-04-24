@@ -14,7 +14,7 @@ type SpannerRepository struct {
 
 func (s *SpannerRepository) FetchPending(ctx context.Context, batchSize int) ([]OutboxEvent, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT id, entity, entity_type, payload, retry_count, event_headers, routing_key FROM outbox
+		SQL: `SELECT id, entity, entity_type, payload, retry_count, headers, routing_key FROM outbox
               WHERE (status = @statusPending OR (status = @statusProcessing AND updated_at < @lockExpiration))
               LIMIT @batchSize`,
 		Params: map[string]interface{}{

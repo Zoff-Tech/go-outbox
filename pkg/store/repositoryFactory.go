@@ -22,7 +22,7 @@ func NewRepository(ctx context.Context, cfg config.DbSettings) (OutBoxRepository
 		if err != nil {
 			return nil, err
 		}
-		return &PostgresRepository{db: db}, nil
+		return &PostgresRepository{Db: db}, nil
 	case "spanner":
 		client, err := spanner.NewClient(ctx, cfg.URI)
 		if err != nil {

@@ -3,19 +3,21 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"time"
 
 	"go.opentelemetry.io/otel"
 )
 
 type PostgresRepository struct {
-	db *sql.DB // using database/sql
+	Db *sql.DB // using database/sql
 }
 
 func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([]OutboxEvent, error) {
 	return p.withTransaction(ctx, "FetchPending", func(ctx context.Context, tx *sql.Tx) ([]OutboxEvent, error) {
 		rows, err := tx.QueryContext(ctx,
-			`SELECT id, entity, entity_type, payload, retry_count, event_headers, routing_key FROM outbox_events
+			`SELECT id, entity, entity_type, payload, retry_count, headers, routing_key FROM outbox_events
              WHERE (status='pending' OR (status='processing' AND updated_at < $1)) 
              FOR UPDATE SKIP LOCKED LIMIT $2`, time.Now().Add(-lockExpiration), batchSize)
 		if err != nil {
@@ -24,6 +26,8 @@ func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([
 		defer rows.Close()
 
 		var events []OutboxEvent
+		var rawHeaders string // Use a temporary variable to store the raw headers
+
 		for rows.Next() {
 			var event OutboxEvent
 			if err := rows.Scan(&event.ID,
@@ -31,10 +35,18 @@ func (p *PostgresRepository) FetchPending(ctx context.Context, batchSize int) ([
 				&event.EntityType,
 				&event.Payload,
 				&event.RetryCount,
-				&event.Headers,
+				&rawHeaders,
 				&event.RoutingKey); err != nil {
 				return nil, err
 			}
+
+			// Convert rawHeaders to a map[string]string
+			if rawHeaders != "" {
+				if err := json.Unmarshal([]byte(rawHeaders), &event.Headers); err != nil {
+					return nil, errors.New("failed to parse headers: " + err.Error())
+				}
+			}
+
 			events = append(events, event)
 		}
 
@@ -116,7 +128,7 @@ func (p *PostgresRepository) withTransaction(ctx context.Context, spanName strin
 	tx, ok := ctx.Value("tx").(*sql.Tx)
 	if !ok {
 		var err error
-		tx, err = p.db.BeginTx(ctx, nil)
+		tx, err = p.Db.BeginTx(ctx, nil)
 		if err != nil {
 			span.RecordError(err)
 			return nil, err
