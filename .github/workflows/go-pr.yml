@@ -29,6 +29,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: create workspace
+        run: go work init ./sidecart
+
+      - name: add schema to workspace
+        run: go work use ./schema
+        
+
       - name: Install dependencies
         run: go mod download
 
