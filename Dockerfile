@@ -18,7 +18,7 @@ RUN go work init ./sidecart
 
 RUN go work use ./schema
 
-RUN go mod download -x
+RUN go mod download
 
 # Copy the application source code
 COPY . .
