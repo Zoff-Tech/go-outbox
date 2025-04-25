@@ -33,7 +33,7 @@ jobs:
         run: go mod download
 
       - name: Build
-        run: go build -o outbox-sidecar ./sidecart/outbox-sidecar
+        run: go build -o outbox-sidecar ./sidecart/service/outbox-sidecar
 
       - name: Run unit tests
         run: go test -v ./...
