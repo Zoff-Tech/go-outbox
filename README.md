@@ -225,23 +225,7 @@ This approach is especially useful for 12-factor apps and cloud-native deploymen
 
 
 
-
 **For more Implementation datails read my blog post: here**
 
-## Project Folders
-
-`/cmd/outbox-sidecar/`    -> main package, parses flags/config and starts the service
-
-`/pkg/config/`            -> configuration loading and validation
-
-`/pkg/storage/`           -> outbox repository interfaces and implementations (postgres.go, mysql.go, mongo.go, etc.)
-
-`/pkg/broker/`            -> broker interface and implementations (rabbitmq.go, pubsub.go, ...)
-
-`/pkg/processor/`         -> the outbox processor logic (event loop, retry, DLQ handling)
-
-`/pkg/telemetry/`         -> setup for OpenTelemetry (tracer, meter)
-
-`/docs/`                  -> documentation and usage guides
 
 
