@@ -4,17 +4,32 @@ FROM golang:1.24 as builder
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy the Go modules manifests
-COPY go.mod go.sum ./
+# Set GOPROXY environment variable
+ENV GOPROXY=https://proxy.golang.org,direct
 
-# Download Go module dependencies
-RUN go mod download
+
+
+COPY ./sidecart/go.mod  ./sidecart/go.mod 
+COPY ./sidecart/go.sum  ./sidecart/go.sum 
+
+COPY ./schema/go.mod ./schema/go.mod 
+
+RUN go work init ./sidecart
+
+RUN go work use ./schema
+
+RUN go mod download -x
 
 # Copy the application source code
 COPY . .
 
+
+# Download Go module dependencies
+#RUN go mod download
+
+
 # Build the Go application
-RUN go build -o outbox-sidecar ./service
+RUN go build -o outbox-sidecar ./sidecart/service
 
 # Use a newer base image with GLIBC 2.32 or higher
 FROM debian:stable-slim
@@ -26,7 +41,7 @@ WORKDIR /app
 COPY --from=builder /app/outbox-sidecar .
 
 # Copy the configuration file (if needed for runtime)
-COPY ./service/config/sidecar.yaml ./config/sidecar.yaml
+COPY ./sidecart/service/config/sidecar.yaml ./config/sidecar.yaml
 
 # Expose the port your application listens on (if applicable)
 EXPOSE 8080
