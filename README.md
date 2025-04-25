@@ -1,10 +1,4 @@
-<style>
-p {
-margin-left:40px;
-width:80%;
-text-align: justify;
-}
-</style>
+
 
 
 # Golang Sidecar Service for the Outbox Pattern
