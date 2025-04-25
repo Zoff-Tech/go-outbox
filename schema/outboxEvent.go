@@ -1,4 +1,4 @@
-package store
+package schema
 
 import "time"
 
@@ -26,4 +26,26 @@ type OutboxEvent struct {
 	Headers    map[string]string `json:"headers"`
 	RetryCount int               `json:"retry_count"`
 	RoutingKey string            `json:"routing_key"`
+}
+
+// NewEvent creates a new OutboxEvent with required fields and sensible defaults.
+func NewEvent(
+	id, entity, entityType string,
+	payload []byte,
+	headers map[string]string,
+	routingKey string,
+) *OutboxEvent {
+	now := time.Now()
+	return &OutboxEvent{
+		ID:         id,
+		Entity:     entity,
+		EntityType: entityType,
+		Payload:    payload,
+		Status:     StatusPending,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+		Headers:    headers,
+		RetryCount: 0,
+		RoutingKey: routingKey,
+	}
 }

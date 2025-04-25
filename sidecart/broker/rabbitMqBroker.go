@@ -17,8 +17,8 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/zoff-tech/go-outbox/pkg/config"
-	"github.com/zoff-tech/go-outbox/pkg/store"
+	"github.com/zoff-tech/go-outbox/config"
+	"github.com/zoff-tech/go-outbox/schema"
 )
 
 type connectionInterface interface {
@@ -80,7 +80,7 @@ type rabbitMqBroker struct {
 	stopReconnect   chan struct{}
 }
 
-func (r *rabbitMqBroker) Publish(ctx context.Context, event *store.OutboxEvent) error {
+func (r *rabbitMqBroker) Publish(ctx context.Context, event *schema.OutboxEvent) error {
 	tracer := otel.Tracer("go-outbox")
 	ctx, span := tracer.Start(ctx, "Publish",
 		trace.WithAttributes(

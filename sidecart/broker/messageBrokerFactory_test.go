@@ -7,7 +7,8 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"github.com/zoff-tech/go-outbox/pkg/store"
+	"github.com/zoff-tech/go-outbox/schema"
+	"github.com/zoff-tech/go-outbox/store"
 )
 
 func TestFetchPending(t *testing.T) {
@@ -27,7 +28,7 @@ func TestFetchPending(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), 10).
 		WillReturnRows(rows)
 	mock.ExpectExec(regexp.QuoteMeta(`UPDATE outbox_events SET status=$1, retry_count = retry_count + 1, updated_at=$2 WHERE id=$3`)).
-		WithArgs(store.StatusProcessing, sqlmock.AnyArg(), "1").
+		WithArgs(schema.StatusProcessing, sqlmock.AnyArg(), "1").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(regexp.QuoteMeta(`UPDATE outbox_events SET status=$1, updated_at=$2 WHERE id=$3`)).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "2").

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/zoff-tech/go-outbox/schema"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -24,7 +25,7 @@ func NewMongoRepository(client *mongo.Client, database, collection string) *Mong
 	}
 }
 
-func (m *MongoRepository) FetchPending(ctx context.Context, batchSize int) ([]OutboxEvent, error) {
+func (m *MongoRepository) FetchPending(ctx context.Context, batchSize int) ([]schema.OutboxEvent, error) {
 	tracer := otel.Tracer("go-outbox")
 	ctx, span := tracer.Start(ctx, "FetchPending")
 	defer span.End()
@@ -34,8 +35,8 @@ func (m *MongoRepository) FetchPending(ctx context.Context, batchSize int) ([]Ou
 	collection := m.client.Database(m.database).Collection(m.collection)
 	filter := bson.M{
 		"$or": []bson.M{
-			{"status": StatusPending},
-			{"status": StatusProcessing, "updated_at": bson.M{"$lt": time.Now().Add(-lockExpiration)}},
+			{"status": schema.StatusPending},
+			{"status": schema.StatusProcessing, "updated_at": bson.M{"$lt": time.Now().Add(-lockExpiration)}},
 		},
 	}
 	opts := options.Find().SetLimit(int64(batchSize)).SetSort(bson.D{{Key: "updated_at", Value: 1}})
@@ -46,9 +47,9 @@ func (m *MongoRepository) FetchPending(ctx context.Context, batchSize int) ([]Ou
 	}
 	defer cursor.Close(ctx)
 
-	var events []OutboxEvent
+	var events []schema.OutboxEvent
 	for cursor.Next(ctx) {
-		var event OutboxEvent
+		var event schema.OutboxEvent
 		if err := cursor.Decode(&event); err != nil {
 			span.RecordError(err)
 			return nil, err
@@ -64,11 +65,11 @@ func (m *MongoRepository) FetchPending(ctx context.Context, batchSize int) ([]Ou
 	// Update status and updated_at for fetched events
 	for _, event := range events {
 		if event.RetryCount >= maxRetries {
-			if err := m.SetStatus(ctx, event.ID, StatusFailed); err != nil {
+			if err := m.SetStatus(ctx, event.ID, schema.StatusFailed); err != nil {
 				return nil, err
 			}
 		} else {
-			if err := m.SetStatusAndIncrementRetry(ctx, event.ID, StatusProcessing); err != nil {
+			if err := m.SetStatusAndIncrementRetry(ctx, event.ID, schema.StatusProcessing); err != nil {
 				return nil, err
 			}
 		}
@@ -85,7 +86,7 @@ func (m *MongoRepository) MarkProcessed(ctx context.Context, eventID string) err
 	defer span.End()
 
 	startTime := time.Now()
-	if err := m.SetStatus(ctx, eventID, StatusSent); err != nil {
+	if err := m.SetStatus(ctx, eventID, schema.StatusSent); err != nil {
 		span.RecordError(err)
 		return err
 	}
@@ -95,7 +96,7 @@ func (m *MongoRepository) MarkProcessed(ctx context.Context, eventID string) err
 	return nil
 }
 
-func (m *MongoRepository) SetStatus(ctx context.Context, eventID string, status Status) error {
+func (m *MongoRepository) SetStatus(ctx context.Context, eventID string, status schema.Status) error {
 	collection := m.client.Database(m.database).Collection(m.collection)
 	filter := bson.M{"id": eventID}
 	update := bson.M{
@@ -108,7 +109,7 @@ func (m *MongoRepository) SetStatus(ctx context.Context, eventID string, status 
 	return err
 }
 
-func (m *MongoRepository) SetStatusAndIncrementRetry(ctx context.Context, eventID string, status Status) error {
+func (m *MongoRepository) SetStatusAndIncrementRetry(ctx context.Context, eventID string, status schema.Status) error {
 	collection := m.client.Database(m.database).Collection(m.collection)
 	filter := bson.M{"id": eventID}
 	update := bson.M{

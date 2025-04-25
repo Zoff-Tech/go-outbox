@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/zoff-tech/go-outbox/schema"
 	"google.golang.org/api/iterator"
 )
 
@@ -12,14 +13,14 @@ type SpannerRepository struct {
 	client *spanner.Client
 }
 
-func (s *SpannerRepository) FetchPending(ctx context.Context, batchSize int) ([]OutboxEvent, error) {
+func (s *SpannerRepository) FetchPending(ctx context.Context, batchSize int) ([]schema.OutboxEvent, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT id, entity, entity_type, payload, retry_count, headers, routing_key FROM outbox
               WHERE (status = @statusPending OR (status = @statusProcessing AND updated_at < @lockExpiration))
               LIMIT @batchSize`,
 		Params: map[string]interface{}{
-			"statusPending":    StatusPending,
-			"statusProcessing": StatusProcessing,
+			"statusPending":    schema.StatusPending,
+			"statusProcessing": schema.StatusProcessing,
 			"lockExpiration":   time.Now().Add(-lockExpiration),
 			"batchSize":        batchSize,
 		},
@@ -28,7 +29,7 @@ func (s *SpannerRepository) FetchPending(ctx context.Context, batchSize int) ([]
 	iter := s.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
-	var events []OutboxEvent
+	var events []schema.OutboxEvent
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
@@ -38,7 +39,7 @@ func (s *SpannerRepository) FetchPending(ctx context.Context, batchSize int) ([]
 			return nil, err
 		}
 
-		var event OutboxEvent
+		var event schema.OutboxEvent
 		if err := row.Columns(
 			&event.ID,
 			&event.Entity,
@@ -55,11 +56,11 @@ func (s *SpannerRepository) FetchPending(ctx context.Context, batchSize int) ([]
 	// Update status and updated_at for fetched events
 	for _, event := range events {
 		if event.RetryCount >= maxRetries {
-			if err := s.SetStatus(ctx, event.ID, StatusFailed); err != nil {
+			if err := s.SetStatus(ctx, event.ID, schema.StatusFailed); err != nil {
 				return nil, err
 			}
 		} else {
-			if err := s.SetStatusAndIncrementRetry(ctx, event.ID, StatusProcessing); err != nil {
+			if err := s.SetStatusAndIncrementRetry(ctx, event.ID, schema.StatusProcessing); err != nil {
 				return nil, err
 			}
 		}
@@ -68,7 +69,7 @@ func (s *SpannerRepository) FetchPending(ctx context.Context, batchSize int) ([]
 	return events, nil
 }
 
-func (s *SpannerRepository) SetStatus(ctx context.Context, eventID string, status Status) error {
+func (s *SpannerRepository) SetStatus(ctx context.Context, eventID string, status schema.Status) error {
 	_, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
 			SQL: `UPDATE outbox SET status = @status, updated_at = CURRENT_TIMESTAMP() WHERE id = @id`,
@@ -83,7 +84,7 @@ func (s *SpannerRepository) SetStatus(ctx context.Context, eventID string, statu
 	return err
 }
 
-func (s *SpannerRepository) SetStatusAndIncrementRetry(ctx context.Context, eventID string, status Status) error {
+func (s *SpannerRepository) SetStatusAndIncrementRetry(ctx context.Context, eventID string, status schema.Status) error {
 	_, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
 			SQL: `UPDATE outbox SET status = @status, retry_count = retry_count + 1, updated_at = CURRENT_TIMESTAMP() WHERE id = @id`,
@@ -113,5 +114,5 @@ func (s *SpannerRepository) IncrementRetryCount(ctx context.Context, eventID str
 }
 
 func (s *SpannerRepository) MarkProcessed(ctx context.Context, eventID string) error {
-	return s.SetStatus(ctx, eventID, StatusSent)
+	return s.SetStatus(ctx, eventID, schema.StatusSent)
 }

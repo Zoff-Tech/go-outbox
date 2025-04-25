@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/zoff-tech/go-outbox/pkg/config"
+	"github.com/zoff-tech/go-outbox/config"
 )
 
 func NewBroker(ctx context.Context, cfg *config.BrokerSettings) (MessageBroker, error) {

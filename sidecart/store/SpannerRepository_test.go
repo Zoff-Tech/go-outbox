@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"cloud.google.com/go/spanner/spannertest"
 	"github.com/stretchr/testify/assert"
+	"github.com/zoff-tech/go-outbox/schema"
 )
 
 func setupSpannerTestServer(t *testing.T) (*spanner.Client, func()) {
@@ -41,7 +42,7 @@ func SpannerTestFetchPending(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, events, 1)
 	assert.Equal(t, "1", events[0].ID)
-	assert.Equal(t, StatusPending, events[0].Status)
+	assert.Equal(t, schema.StatusPending, events[0].Status)
 }
 
 func SpannerTestSetStatus(t *testing.T) {
@@ -58,7 +59,7 @@ func SpannerTestSetStatus(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Call SetStatus
-	err = repo.SetStatus(ctx, "1", StatusProcessing)
+	err = repo.SetStatus(ctx, "1", schema.StatusProcessing)
 	assert.NoError(t, err)
 
 	// Verify the status was updated
@@ -74,7 +75,7 @@ func SpannerTestSetStatus(t *testing.T) {
 	var status string
 	err = row.Columns(&status)
 	assert.NoError(t, err)
-	assert.Equal(t, StatusProcessing, status)
+	assert.Equal(t, schema.StatusProcessing, status)
 }
 
 func SpannerTestSetStatusAndIncrementRetry(t *testing.T) {
@@ -91,7 +92,7 @@ func SpannerTestSetStatusAndIncrementRetry(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Call SetStatusAndIncrementRetry
-	err = repo.SetStatusAndIncrementRetry(ctx, "1", StatusProcessing)
+	err = repo.SetStatusAndIncrementRetry(ctx, "1", schema.StatusProcessing)
 	assert.NoError(t, err)
 
 	// Verify the status and retry count were updated
@@ -108,7 +109,7 @@ func SpannerTestSetStatusAndIncrementRetry(t *testing.T) {
 	var retryCount int64
 	err = row.Columns(&status, &retryCount)
 	assert.NoError(t, err)
-	assert.Equal(t, StatusProcessing, status)
+	assert.Equal(t, schema.StatusProcessing, status)
 	assert.Equal(t, int64(1), retryCount)
 }
 
@@ -175,5 +176,5 @@ func SpannerTestMarkProcessed(t *testing.T) {
 	var status string
 	err = row.Columns(&status)
 	assert.NoError(t, err)
-	assert.Equal(t, StatusSent, status)
+	assert.Equal(t, schema.StatusSent, status)
 }

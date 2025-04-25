@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/zoff-tech/go-outbox/pkg/config"
+	"github.com/zoff-tech/go-outbox/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"

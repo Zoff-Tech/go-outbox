@@ -9,8 +9,8 @@ import (
 	"github.com/streadway/amqp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/zoff-tech/go-outbox/pkg/config"
-	"github.com/zoff-tech/go-outbox/pkg/store"
+	"github.com/zoff-tech/go-outbox/config"
+	"github.com/zoff-tech/go-outbox/schema"
 )
 
 // --- Mocks ---
@@ -81,7 +81,7 @@ func TestPublish_Success(t *testing.T) {
 	ch.On("ExchangeDeclare", "ex", "direct", true, false, false, false, mock.Anything).Return(nil)
 	ch.On("Publish", "ex", "rk", false, false, mock.Anything).Return(nil)
 
-	event := &store.OutboxEvent{
+	event := &schema.OutboxEvent{
 		Entity:     "ex",
 		EntityType: "direct",
 		RoutingKey: "rk",
@@ -99,7 +99,7 @@ func TestPublish_ExchangeDeclareError(t *testing.T) {
 	broker := newTestBroker(1, conn, ch)
 
 	ch.On("ExchangeDeclare", "ex", "direct", true, false, false, false, mock.Anything).Return(errors.New("exch"))
-	event := &store.OutboxEvent{
+	event := &schema.OutboxEvent{
 		Entity:     "ex",
 		EntityType: "direct",
 		RoutingKey: "rk",
@@ -118,7 +118,7 @@ func TestPublish_PublishError(t *testing.T) {
 
 	ch.On("ExchangeDeclare", "ex", "direct", true, false, false, false, mock.Anything).Return(nil)
 	ch.On("Publish", "ex", "rk", false, false, mock.Anything).Return(errors.New("pub"))
-	event := &store.OutboxEvent{
+	event := &schema.OutboxEvent{
 		Entity:     "ex",
 		EntityType: "direct",
 		RoutingKey: "rk",
@@ -140,7 +140,7 @@ func TestPublish_GetChannelError(t *testing.T) {
 		stopReconnect:   make(chan struct{}),
 	}
 	conn.On("Channel").Return(nil, errors.New("chanfail"))
-	event := &store.OutboxEvent{
+	event := &schema.OutboxEvent{
 		Entity:     "ex",
 		EntityType: "direct",
 		RoutingKey: "rk",

@@ -11,9 +11,10 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/zoff-tech/go-outbox/pkg/broker"
-	"github.com/zoff-tech/go-outbox/pkg/config"
-	"github.com/zoff-tech/go-outbox/pkg/store"
+	"github.com/zoff-tech/go-outbox/broker"
+	"github.com/zoff-tech/go-outbox/config"
+	"github.com/zoff-tech/go-outbox/schema"
+	"github.com/zoff-tech/go-outbox/store"
 )
 
 // OutboxProcessor processes outbox events.
@@ -68,11 +69,11 @@ func (p *OutboxProcessor) ProcessEvents(ctx context.Context) {
 
 				// Increment retry count and update status
 				if event.RetryCount < p.maxRetries {
-					if err := p.repo.SetStatusAndIncrementRetry(ctx, event.ID, store.StatusPending); err != nil {
+					if err := p.repo.SetStatusAndIncrementRetry(ctx, event.ID, schema.StatusPending); err != nil {
 						log.Printf("Failed to update retry count for event %s: %v", event.ID, err)
 					}
 				} else {
-					if err := p.repo.SetStatus(ctx, event.ID, store.StatusFailed); err != nil {
+					if err := p.repo.SetStatus(ctx, event.ID, schema.StatusFailed); err != nil {
 						log.Printf("Failed to mark event %s as failed: %v", event.ID, err)
 					}
 				}

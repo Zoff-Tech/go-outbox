@@ -1,0 +1,34 @@
+# Go build cache and modules
+/pkg/
+/bin/
+/out/
+
+# VCS
+.git
+.gitignore
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test data and coverage
+*.test
+*.out
+coverage.*
+
+# Node/npm (if present)
+node_modules/
+
+# Ignore local config and secrets
+*.env
+.env.*
+sidecart/service/config/sidecar.local.yaml
+
+# Go workspace file
+go.work
+go.work.sum
