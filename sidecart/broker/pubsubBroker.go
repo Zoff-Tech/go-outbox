@@ -5,7 +5,7 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/zoff-tech/go-outbox/config"
-	"github.com/zoff-tech/go-outbox/store"
+	"github.com/zoff-tech/go-outbox/schema"
 	"google.golang.org/api/option"
 
 	"go.opentelemetry.io/otel"
@@ -31,7 +31,7 @@ type pubSubBroker struct {
 	client *pubsub.Client
 }
 
-func (p *pubSubBroker) Publish(ctx context.Context, event *store.OutboxEvent) error {
+func (p *pubSubBroker) Publish(ctx context.Context, event *schema.OutboxEvent) error {
 	tracer := otel.Tracer("go-outbox")
 	ctx, span := tracer.Start(ctx, "Publish",
 		trace.WithAttributes(
